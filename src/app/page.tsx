@@ -203,34 +203,47 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+    <main className="min-h-screen text-white">
       {/* Header */}
-      <header className="border-b border-gray-700/50 backdrop-blur-sm bg-gray-900/50 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto p-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
-              🎯 Bounty Hunter
-            </h1>
-            <p className="text-gray-400 text-xs">AI-Verified Tasks • USDC on Arc</p>
+      <header className="glass sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-xl">
+              🎯
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold gradient-text">
+                Bounty Hunter
+              </h1>
+              <p className="text-[var(--text-muted)] text-xs">AI-Verified • USDC on Arc</p>
+            </div>
           </div>
-          <div className="flex gap-3 items-center">
+          
+          {/* Nav + Wallet */}
+          <div className="flex items-center gap-4">
             {userAddress ? (
               <>
-                <div className="text-sm bg-gray-800 px-3 py-2 rounded-lg">
-                  <span className="text-gray-400">🟢</span>{' '}
-                  <span className="text-green-400 font-mono">
+                {/* Wallet Badge */}
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]">
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                  <span className="text-sm font-mono text-[var(--text-secondary)]">
                     {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
                   </span>
                 </div>
+                
+                {/* Post Bounty Button */}
                 <button
                   onClick={() => setShowCreate(true)}
-                  className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 px-4 py-2 rounded-lg font-medium transition-all"
+                  className="px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
                 >
                   + Post Bounty
                 </button>
+                
+                {/* Disconnect */}
                 <button
                   onClick={disconnect}
-                  className="text-gray-400 hover:text-white text-sm"
+                  className="text-[var(--text-muted)] hover:text-white text-sm transition-colors"
                 >
                   Disconnect
                 </button>
@@ -238,7 +251,7 @@ export default function Home() {
             ) : (
               <button
                 onClick={() => setShowConnect(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 px-4 py-2 rounded-lg font-medium transition-all"
+                className="px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
               >
                 Connect Wallet
               </button>
