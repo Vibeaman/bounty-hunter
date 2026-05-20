@@ -155,23 +155,27 @@ export default function Home() {
           </div>
           
           {userAddress ? (
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-gray)] rounded-full">
-                <div className="w-2 h-2 rounded-full bg-[var(--green)]"></div>
-                <span className="text-xs font-mono text-[var(--text-muted)]">
-                  {userAddress.slice(0, 4)}...{userAddress.slice(-4)}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-gray)] rounded-full">
+                <div className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse"></div>
+                <span className="text-sm font-mono text-[var(--text-secondary)]">
+                  {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
                 </span>
               </div>
-              <button onClick={disconnect} className="text-xs text-[var(--text-muted)] hover:text-[var(--blue)] transition-all">
+              <button onClick={disconnect} className="text-sm text-[var(--text-muted)] hover:text-[var(--blue)] transition-all">
                 Disconnect
               </button>
             </div>
           ) : (
             <button 
               onClick={() => setShowConnect(true)} 
-              className="text-[var(--blue)] font-medium text-sm border border-[var(--blue)] px-3 py-1.5 rounded-lg hover:bg-[var(--blue-light)] transition-all"
+              className="flex items-center gap-2 bg-[var(--blue)] text-white font-medium text-sm px-5 py-2.5 rounded-full hover:bg-[var(--blue-hover)] transition-all shadow-sm hover:shadow-md"
             >
-              Connect
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="6" width="20" height="12" rx="2"/>
+                <path d="M16 12h.01"/>
+              </svg>
+              Connect Wallet
             </button>
           )}
         </div>
