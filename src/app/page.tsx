@@ -13,20 +13,17 @@ export default function Home() {
   const [addressInput, setAddressInput] = useState('');
   const [connecting, setConnecting] = useState(false);
   
-  // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [requirements, setRequirements] = useState('');
   const [reward, setReward] = useState('');
   
-  // Submission state
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [submission, setSubmission] = useState('');
   const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     fetchBounties();
-    // Check localStorage for saved wallet
     const saved = localStorage.getItem('bountyHunterWallet');
     if (saved) {
       const { address, walletId } = JSON.parse(saved);
@@ -52,16 +49,13 @@ export default function Home() {
       alert('Please enter a valid wallet address (0x...)');
       return;
     }
-    
     setConnecting(true);
-    
     try {
       const res = await fetch('/api/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: addressInput.trim() }),
       });
-      
       const data = await res.json();
       if (data.user) {
         setUserAddress(data.user.address);
@@ -72,12 +66,9 @@ export default function Home() {
         }));
         setShowConnect(false);
         setAddressInput('');
-      } else {
-        alert(data.error || 'Failed to connect');
       }
     } catch (error) {
       console.error('Wallet error:', error);
-      alert('Connection failed');
     } finally {
       setConnecting(false);
     }
@@ -90,36 +81,20 @@ export default function Home() {
   };
 
   const createBounty = async () => {
-    if (!userAddress || !walletId) {
-      alert('Please connect wallet first');
-      return;
-    }
-    
+    if (!userAddress || !walletId) return;
     if (!title || !description || !requirements || !reward) {
       alert('Please fill all fields');
       return;
     }
-    
     try {
       const res = await fetch('/api/bounties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description,
-          requirements,
-          reward,
-          creator: userAddress,
-          creatorWalletId: walletId,
-        }),
+        body: JSON.stringify({ title, description, requirements, reward, creator: userAddress, creatorWalletId: walletId }),
       });
-      
       if (res.ok) {
         setShowCreate(false);
-        setTitle('');
-        setDescription('');
-        setRequirements('');
-        setReward('');
+        setTitle(''); setDescription(''); setRequirements(''); setReward('');
         fetchBounties();
       }
     } catch (error) {
@@ -128,131 +103,73 @@ export default function Home() {
   };
 
   const claimBounty = async (bountyId: string) => {
-    if (!userAddress) {
-      setShowConnect(true);
-      return;
-    }
-    
+    if (!userAddress) { setShowConnect(true); return; }
     try {
       const res = await fetch(`/api/bounties/${bountyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'claim',
-          address: userAddress,
-        }),
+        body: JSON.stringify({ action: 'claim', address: userAddress }),
       });
-      
-      if (res.ok) {
-        fetchBounties();
-      }
+      if (res.ok) fetchBounties();
     } catch (error) {
       console.error('Claim error:', error);
     }
   };
 
   const submitWork = async (bountyId: string) => {
-    if (!submission.trim()) {
-      alert('Please enter your submission');
-      return;
-    }
-    
+    if (!submission.trim()) return;
     setVerifying(true);
-    
     try {
       const res = await fetch(`/api/bounties/${bountyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'submit',
-          address: userAddress,
-          submission,
-        }),
+        body: JSON.stringify({ action: 'submit', address: userAddress, submission }),
       });
-      
       const data = await res.json();
-      
       if (data.verification) {
-        if (data.verification.approved) {
-          alert('✅ ' + data.message);
-        } else {
-          alert('❌ ' + data.message + '\n\nFeedback: ' + data.verification.feedback);
-        }
+        alert(data.verification.approved ? '✅ ' + data.message : '❌ ' + data.message);
       }
-      
       setSubmitting(null);
       setSubmission('');
       fetchBounties();
     } catch (error) {
       console.error('Submit error:', error);
-      alert('Submission failed');
     } finally {
       setVerifying(false);
     }
   };
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'open': return 'bg-green-500/20 text-green-400 border border-green-500/30';
-      case 'claimed': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
-      case 'submitted': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
-      case 'completed': return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
-      case 'refunded': return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
-    }
-  };
-
   return (
-    <main className="min-h-screen text-white">
+    <main className="min-h-screen">
       {/* Header */}
-      <header className="glass sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          {/* Logo */}
+      <header className="header-glass sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-xl">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-lg">
               🎯
             </div>
             <div>
-              <h1 className="text-xl font-semibold gradient-text">
-                Bounty Hunter
-              </h1>
-              <p className="text-[var(--text-muted)] text-xs">AI-Verified • USDC on Arc</p>
+              <h1 className="text-lg font-semibold">Bounty Hunter</h1>
+              <p className="text-xs text-[var(--text-muted)]">AI-Verified • USDC on Arc</p>
             </div>
           </div>
           
-          {/* Nav + Wallet */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {userAddress ? (
               <>
-                {/* Wallet Badge */}
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                  <span className="text-sm font-mono text-[var(--text-secondary)]">
-                    {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
-                  </span>
+                <div className="pill flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="font-mono text-sm">{userAddress.slice(0, 6)}...{userAddress.slice(-4)}</span>
                 </div>
-                
-                {/* Post Bounty Button */}
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
-                >
+                <button onClick={() => setShowCreate(true)} className="btn-primary">
                   + Post Bounty
                 </button>
-                
-                {/* Disconnect */}
-                <button
-                  onClick={disconnect}
-                  className="text-[var(--text-muted)] hover:text-white text-sm transition-colors"
-                >
+                <button onClick={disconnect} className="text-[var(--text-muted)] text-sm hover:text-[var(--text-primary)]">
                   Disconnect
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => setShowConnect(true)}
-                className="px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
-              >
+              <button onClick={() => setShowConnect(true)} className="btn-primary">
                 Connect Wallet
               </button>
             )}
@@ -260,62 +177,194 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Hero Section */}
+      <div className="max-w-5xl mx-auto px-6 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            <span className="text-[var(--accent-purple)]">Hunt Bounties,</span> Get Paid
+          </h1>
+          <p className="text-[var(--text-secondary)] text-lg max-w-2xl mx-auto">
+            Complete tasks, get verified by AI, and receive instant USDC payments on Arc Network
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-3 gap-4 mb-12">
+          <div className="card p-6 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center text-2xl mx-auto mb-3">
+              📋
+            </div>
+            <div className="text-3xl font-bold text-[var(--text-primary)]">{bounties.filter(b => b.status === 'open').length}</div>
+            <div className="text-sm text-[var(--text-muted)]">Open Bounties</div>
+          </div>
+          <div className="card p-6 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center text-2xl mx-auto mb-3">
+              ✅
+            </div>
+            <div className="text-3xl font-bold text-[var(--text-primary)]">{bounties.filter(b => b.status === 'completed').length}</div>
+            <div className="text-sm text-[var(--text-muted)]">Completed</div>
+          </div>
+          <div className="card p-6 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-2xl mx-auto mb-3">
+              💰
+            </div>
+            <div className="text-3xl font-bold text-[var(--text-primary)]">${bounties.reduce((sum, b) => sum + parseFloat(b.reward || '0'), 0).toFixed(0)}</div>
+            <div className="text-sm text-[var(--text-muted)]">Total USDC</div>
+          </div>
+        </div>
+
+        {/* Bounty List */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">Available Bounties</h2>
+            <span className="text-sm text-[var(--text-muted)]">{bounties.length} total</span>
+          </div>
+
+          {loading ? (
+            <div className="card p-12 text-center">
+              <div className="w-8 h-8 border-2 border-[var(--accent-purple)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-[var(--text-muted)]">Loading bounties...</p>
+            </div>
+          ) : bounties.length === 0 ? (
+            <div className="card p-12 text-center animate-fade-in">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center text-3xl mx-auto mb-4">
+                🎯
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No bounties yet</h3>
+              <p className="text-[var(--text-muted)]">Be the first to post one!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {bounties.map((bounty, i) => (
+                <div key={bounty.id} className="card p-6 animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-lg font-semibold">{bounty.title}</h3>
+                        <span className={`badge ${bounty.status === 'open' ? 'badge-open' : bounty.status === 'completed' ? 'badge-completed' : 'badge-claimed'}`}>
+                          {bounty.status.charAt(0).toUpperCase() + bounty.status.slice(1)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[var(--text-muted)]">by {bounty.creator.slice(0, 6)}...{bounty.creator.slice(-4)}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-[var(--accent-purple)]">${bounty.reward}</div>
+                      <div className="text-xs text-[var(--text-muted)]">USDC</div>
+                    </div>
+                  </div>
+                  
+                  <p className="text-[var(--text-secondary)] mb-4">{bounty.description}</p>
+                  
+                  <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span>📋</span>
+                      <span className="text-xs font-medium text-[var(--text-muted)] uppercase">Requirements (AI-verified)</span>
+                    </div>
+                    <p className="text-sm text-[var(--text-secondary)]">{bounty.requirements}</p>
+                  </div>
+
+                  {bounty.verificationResult && (
+                    <div className={`rounded-xl p-4 mb-4 ${bounty.verificationResult.approved ? 'bg-green-50' : 'bg-red-50'}`}>
+                      <p className={`text-sm font-medium ${bounty.verificationResult.approved ? 'text-green-600' : 'text-red-600'}`}>
+                        {bounty.verificationResult.approved ? '✓ Approved' : '✗ Not Approved'}
+                      </p>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">{bounty.verificationResult.feedback}</p>
+                    </div>
+                  )}
+
+                  {bounty.status === 'open' && bounty.creator !== userAddress && (
+                    <button onClick={() => claimBounty(bounty.id)} className="btn-primary">
+                      ⚡ Claim Bounty
+                    </button>
+                  )}
+
+                  {bounty.status === 'claimed' && bounty.claimedBy === userAddress && (
+                    submitting === bounty.id ? (
+                      <div className="space-y-3">
+                        <textarea
+                          placeholder="Paste your work submission..."
+                          value={submission}
+                          onChange={(e) => setSubmission(e.target.value)}
+                          className="h-28"
+                        />
+                        <div className="flex gap-3">
+                          <button onClick={() => submitWork(bounty.id)} disabled={verifying} className="btn-primary">
+                            {verifying ? '🤖 Verifying...' : '🚀 Submit'}
+                          </button>
+                          <button onClick={() => { setSubmitting(null); setSubmission(''); }} className="btn-secondary">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setSubmitting(bounty.id)} className="btn-primary">
+                        📝 Submit Work
+                      </button>
+                    )
+                  )}
+
+                  {bounty.status === 'completed' && (
+                    <div className="flex items-center gap-2 text-green-600 font-medium">
+                      <span>✅</span> Completed - Payment sent!
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="border-t border-[var(--border-color)] bg-white/50">
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🎯</span>
+              <span className="font-medium">Bounty Hunter</span>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-[var(--text-muted)]">
+              <span>Built on Arc</span>
+              <span>•</span>
+              <span>Powered by Circle</span>
+              <span>•</span>
+              <span>AI Verified</span>
+            </div>
+          </div>
+          <div className="text-center text-xs text-[var(--text-muted)] mt-6">
+            Built for Agora Hackathon 2026
+          </div>
+        </div>
+      </footer>
+
       {/* Connect Modal */}
       {showConnect && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-3xl w-full max-w-md shadow-2xl animate-fade-in overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-6 pb-0">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-2xl mb-4 shadow-lg shadow-purple-500/30">
-                👛
-              </div>
-              <h2 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">Connect Wallet</h2>
-              <p className="text-[var(--text-secondary)] text-sm">
-                Enter your Arc wallet address to start hunting bounties
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-8 w-full max-w-md animate-fade-in">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-2xl mb-6 mx-auto">
+              👛
+            </div>
+            <h2 className="text-2xl font-semibold text-center mb-2">Connect Wallet</h2>
+            <p className="text-[var(--text-muted)] text-center mb-6">Enter your Arc wallet address</p>
+            
+            <input
+              placeholder="0x..."
+              value={addressInput}
+              onChange={(e) => setAddressInput(e.target.value)}
+              className="font-mono mb-4"
+            />
+            
+            <div className="bg-blue-50 rounded-xl p-3 mb-6">
+              <p className="text-xs text-[var(--text-secondary)]">
+                💡 Get testnet USDC at <a href="https://faucet.circle.com" target="_blank" className="text-[var(--accent-blue)] hover:underline">faucet.circle.com</a>
               </p>
             </div>
             
-            {/* Modal Body */}
-            <div className="p-6">
-              <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
-                Wallet Address
-              </label>
-              <input
-                placeholder="0x..."
-                value={addressInput}
-                onChange={(e) => setAddressInput(e.target.value)}
-                className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)] transition-colors"
-              />
-              
-              <div className="mt-4 p-3 rounded-xl bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/20">
-                <p className="text-xs text-[var(--text-secondary)] flex items-center gap-2">
-                  <span>💡</span>
-                  Get testnet USDC at{' '}
-                  <a href="https://faucet.circle.com" target="_blank" className="text-[var(--accent-cyan)] hover:underline font-medium">
-                    faucet.circle.com
-                  </a>
-                </p>
-              </div>
-            </div>
-            
-            {/* Modal Footer */}
-            <div className="p-6 pt-0 flex gap-3">
-              <button
-                onClick={connectWallet}
-                disabled={connecting}
-                className="flex-1 py-3.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] hover:opacity-90 transition-all disabled:opacity-50 shadow-lg shadow-purple-500/20"
-              >
-                {connecting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Connecting...
-                  </span>
-                ) : 'Connect'}
+            <div className="flex gap-3">
+              <button onClick={connectWallet} disabled={connecting} className="btn-primary flex-1">
+                {connecting ? 'Connecting...' : 'Connect'}
               </button>
-              <button
-                onClick={() => setShowConnect(false)}
-                className="flex-1 py-3.5 rounded-xl font-medium bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-colors"
-              >
+              <button onClick={() => setShowConnect(false)} className="btn-secondary flex-1">
                 Cancel
               </button>
             </div>
@@ -325,307 +374,47 @@ export default function Home() {
 
       {/* Create Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="glass rounded-3xl w-full max-w-lg shadow-2xl animate-fade-in overflow-hidden max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="p-6 pb-0">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-2xl mb-4 shadow-lg shadow-green-500/30">
-                🎯
-              </div>
-              <h2 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">Post a Bounty</h2>
-              <p className="text-[var(--text-secondary)] text-sm">
-                Create a task and let AI verify submissions automatically
-              </p>
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card p-8 w-full max-w-lg animate-fade-in max-h-[90vh] overflow-y-auto">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-2xl mb-6 mx-auto">
+              🎯
             </div>
+            <h2 className="text-2xl font-semibold text-center mb-2">Post a Bounty</h2>
+            <p className="text-[var(--text-muted)] text-center mb-6">Create a task with AI verification</p>
             
-            {/* Modal Body */}
-            <div className="p-6 space-y-4">
-              {/* Title */}
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
-                  Title
-                </label>
-                <input
-                  placeholder="e.g., Design a logo for my startup"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-green-500 transition-colors"
-                />
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Title</label>
+                <input placeholder="e.g., Design a logo" value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
               
-              {/* Description */}
               <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
-                  Description
-                </label>
-                <textarea
-                  placeholder="What do you need done? Be specific about the deliverables..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl h-24 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-green-500 transition-colors resize-none"
-                />
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Description</label>
+                <textarea placeholder="What do you need done?" value={description} onChange={(e) => setDescription(e.target.value)} className="h-24" />
               </div>
               
-              {/* Requirements */}
               <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
-                  Requirements <span className="text-[var(--accent-purple)]">(AI Verification Criteria)</span>
-                </label>
-                <textarea
-                  placeholder="List specific requirements that AI will check against submissions..."
-                  value={requirements}
-                  onChange={(e) => setRequirements(e.target.value)}
-                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl h-24 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-green-500 transition-colors resize-none"
-                />
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Requirements <span className="text-[var(--accent-purple)]">(AI will verify)</span></label>
+                <textarea placeholder="List specific requirements..." value={requirements} onChange={(e) => setRequirements(e.target.value)} className="h-24" />
               </div>
               
-              {/* Reward */}
               <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
-                  Reward Amount
-                </label>
-                <div className="relative">
-                  <input
-                    placeholder="10"
-                    type="number"
-                    value={reward}
-                    onChange={(e) => setReward(e.target.value)}
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl pr-20 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-green-500 transition-colors"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-medium bg-[var(--bg-card)] px-2 py-1 rounded-lg text-sm">
-                    USDC
-                  </span>
-                </div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Reward (USDC)</label>
+                <input type="number" placeholder="10" value={reward} onChange={(e) => setReward(e.target.value)} />
               </div>
             </div>
             
-            {/* Modal Footer */}
-            <div className="p-6 pt-2 flex gap-3">
-              <button
-                onClick={createBounty}
-                className="flex-1 py-3.5 rounded-xl font-medium bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 transition-all shadow-lg shadow-green-500/20"
-              >
+            <div className="flex gap-3 mt-6">
+              <button onClick={createBounty} className="btn-primary flex-1">
                 🚀 Post Bounty
               </button>
-              <button
-                onClick={() => setShowCreate(false)}
-                className="flex-1 py-3.5 rounded-xl font-medium bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-colors"
-              >
+              <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1">
                 Cancel
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Stats Banner */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="glass rounded-2xl p-5 text-center hover:border-[var(--border-hover)] transition-all group">
-            <div className="text-3xl font-bold text-green-400 group-hover:scale-110 transition-transform">
-              {bounties.filter(b => b.status === 'open').length}
-            </div>
-            <div className="text-sm text-[var(--text-muted)] mt-1">Open Bounties</div>
-          </div>
-          <div className="glass rounded-2xl p-5 text-center hover:border-[var(--border-hover)] transition-all group">
-            <div className="text-3xl font-bold text-purple-400 group-hover:scale-110 transition-transform">
-              {bounties.filter(b => b.status === 'completed').length}
-            </div>
-            <div className="text-sm text-[var(--text-muted)] mt-1">Completed</div>
-          </div>
-          <div className="glass rounded-2xl p-5 text-center hover:border-[var(--border-hover)] transition-all group">
-            <div className="text-3xl font-bold text-[var(--accent-cyan)] group-hover:scale-110 transition-transform">
-              ${bounties.reduce((sum, b) => sum + parseFloat(b.reward || '0'), 0).toFixed(0)}
-            </div>
-            <div className="text-sm text-[var(--text-muted)] mt-1">Total USDC</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bounty List */}
-      <div className="max-w-6xl mx-auto px-6 pb-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Available Bounties</h2>
-          <div className="text-sm text-[var(--text-muted)]">{bounties.length} total</div>
-        </div>
-        
-        {loading ? (
-          <div className="text-center py-16">
-            <div className="inline-block w-10 h-10 border-2 border-[var(--bg-card)] border-t-[var(--accent-blue)] rounded-full animate-spin mb-4"></div>
-            <p className="text-[var(--text-muted)]">Loading bounties...</p>
-          </div>
-        ) : bounties.length === 0 ? (
-          <div className="glass rounded-2xl text-center py-20 animate-fade-in">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-3xl">
-              🎯
-            </div>
-            <p className="text-[var(--text-primary)] font-medium mb-2">No bounties yet</p>
-            <p className="text-[var(--text-muted)] text-sm">Be the first to post one!</p>
-          </div>
-        ) : (
-          <div className="grid gap-5">
-            {bounties.map((bounty, index) => (
-              <div 
-                key={bounty.id} 
-                className="glass rounded-2xl p-6 hover:border-[var(--border-hover)] transition-all animate-fade-in"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                {/* Card Header */}
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-lg font-semibold text-[var(--text-primary)]">{bounty.title}</h3>
-                      <span className={`text-xs px-2.5 py-1 rounded-full ${getStatusStyle(bounty.status)}`}>
-                        {bounty.status.charAt(0).toUpperCase() + bounty.status.slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-[var(--text-muted)] text-xs font-mono">
-                      Posted by {bounty.creator.slice(0, 6)}...{bounty.creator.slice(-4)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold gradient-text">
-                      ${bounty.reward}
-                    </div>
-                    <div className="text-xs text-[var(--text-muted)]">USDC</div>
-                  </div>
-                </div>
-                
-                {/* Description */}
-                <p className="text-[var(--text-secondary)] mb-4 leading-relaxed">{bounty.description}</p>
-                
-                {/* Requirements Box */}
-                <div className="bg-[var(--bg-primary)]/50 border border-[var(--border-color)] p-4 rounded-xl mb-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm">📋</span>
-                    <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Requirements (AI-verified)</span>
-                  </div>
-                  <p className="text-sm text-[var(--text-secondary)]">{bounty.requirements}</p>
-                </div>
-                
-                {/* Verification Result */}
-                {bounty.verificationResult && (
-                  <div className={`p-4 rounded-xl mb-5 ${bounty.verificationResult.approved ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-                    <p className="text-sm font-medium flex items-center gap-2">
-                      {bounty.verificationResult.approved ? (
-                        <><span className="text-green-400">✓</span> <span className="text-green-400">Approved</span></>
-                      ) : (
-                        <><span className="text-red-400">✗</span> <span className="text-red-400">Not Approved</span></>
-                      )}
-                    </p>
-                    <p className="text-sm text-[var(--text-secondary)] mt-2">{bounty.verificationResult.feedback}</p>
-                  </div>
-                )}
-                
-                {/* Actions */}
-                {bounty.status === 'open' && bounty.creator !== userAddress && (
-                  <button
-                    onClick={() => claimBounty(bounty.id)}
-                    className="px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] hover:opacity-90 transition-all shadow-lg shadow-blue-500/20"
-                  >
-                    ⚡ Claim Bounty
-                  </button>
-                )}
-                
-                {bounty.status === 'claimed' && bounty.claimedBy === userAddress && (
-                  <div>
-                    {submitting === bounty.id ? (
-                      <div className="space-y-4">
-                        <textarea
-                          placeholder="Paste your work submission here... (AI will verify against requirements)"
-                          value={submission}
-                          onChange={(e) => setSubmission(e.target.value)}
-                          className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl h-32 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-purple)] transition-colors"
-                        />
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => submitWork(bounty.id)}
-                            disabled={verifying}
-                            className="px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-purple)] to-pink-500 hover:opacity-90 transition-all disabled:opacity-50 shadow-lg shadow-purple-500/20"
-                          >
-                            {verifying ? '🤖 AI Verifying...' : '🚀 Submit for Review'}
-                          </button>
-                          <button
-                            onClick={() => { setSubmitting(null); setSubmission(''); }}
-                            className="px-5 py-2.5 rounded-xl font-medium bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setSubmitting(bounty.id)}
-                        className="px-5 py-2.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-purple)] to-pink-500 hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
-                      >
-                        📝 Submit Work
-                      </button>
-                    )}
-                  </div>
-                )}
-                
-                {bounty.status === 'completed' && (
-                  <div className="flex items-center gap-3 text-green-400">
-                    <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <span className="text-xs">✓</span>
-                    </div>
-                    <span className="font-medium">Completed</span>
-                    <span className="text-[var(--text-muted)]">•</span>
-                    <span className="text-[var(--text-secondary)] text-sm">Payment sent!</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* Footer */}
-      <footer className="border-t border-[var(--border-color)] mt-12">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            {/* Brand */}
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-sm">
-                🎯
-              </div>
-              <span className="font-medium text-[var(--text-primary)]">Bounty Hunter</span>
-            </div>
-            
-            {/* Tech Stack */}
-            <div className="flex items-center gap-6 text-sm text-[var(--text-muted)]">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--accent-cyan)]"></div>
-                <span>Arc Network</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--accent-purple)]"></div>
-                <span>Circle USDC</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                <span>AI Verified</span>
-              </div>
-            </div>
-            
-            {/* Links */}
-            <div className="flex items-center gap-4 text-sm">
-              <a href="https://faucet.circle.com" target="_blank" className="text-[var(--text-muted)] hover:text-[var(--accent-cyan)] transition-colors">
-                Get USDC
-              </a>
-              <span className="text-[var(--border-color)]">•</span>
-              <a href="https://arc.network" target="_blank" className="text-[var(--text-muted)] hover:text-[var(--accent-cyan)] transition-colors">
-                Arc Docs
-              </a>
-            </div>
-          </div>
-          
-          {/* Copyright */}
-          <div className="mt-6 pt-6 border-t border-[var(--border-color)] text-center text-xs text-[var(--text-muted)]">
-            Built for the Agora Hackathon 2026 • AI-powered bounty verification on Arc
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }
