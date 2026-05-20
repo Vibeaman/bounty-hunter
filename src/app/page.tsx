@@ -262,38 +262,59 @@ export default function Home() {
 
       {/* Connect Modal */}
       {showConnect && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gray-800 border border-gray-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
-            <h2 className="text-xl font-bold mb-2">Connect Wallet</h2>
-            <p className="text-gray-400 text-sm mb-4">
-              Enter your Arc wallet address to get started
-            </p>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="glass rounded-3xl w-full max-w-md shadow-2xl animate-fade-in overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-6 pb-0">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-2xl mb-4 shadow-lg shadow-purple-500/30">
+                👛
+              </div>
+              <h2 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">Connect Wallet</h2>
+              <p className="text-[var(--text-secondary)] text-sm">
+                Enter your Arc wallet address to start hunting bounties
+              </p>
+            </div>
             
-            <input
-              placeholder="0x..."
-              value={addressInput}
-              onChange={(e) => setAddressInput(e.target.value)}
-              className="w-full bg-gray-700/50 border border-gray-600 p-3 rounded-xl mb-4 font-mono text-sm focus:outline-none focus:border-blue-500"
-            />
+            {/* Modal Body */}
+            <div className="p-6">
+              <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
+                Wallet Address
+              </label>
+              <input
+                placeholder="0x..."
+                value={addressInput}
+                onChange={(e) => setAddressInput(e.target.value)}
+                className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)] transition-colors"
+              />
+              
+              <div className="mt-4 p-3 rounded-xl bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/20">
+                <p className="text-xs text-[var(--text-secondary)] flex items-center gap-2">
+                  <span>💡</span>
+                  Get testnet USDC at{' '}
+                  <a href="https://faucet.circle.com" target="_blank" className="text-[var(--accent-cyan)] hover:underline font-medium">
+                    faucet.circle.com
+                  </a>
+                </p>
+              </div>
+            </div>
             
-            <p className="text-xs text-gray-500 mb-4">
-              💡 Get testnet USDC at{' '}
-              <a href="https://faucet.circle.com" target="_blank" className="text-blue-400 hover:underline">
-                faucet.circle.com
-              </a>
-            </p>
-            
-            <div className="flex gap-3">
+            {/* Modal Footer */}
+            <div className="p-6 pt-0 flex gap-3">
               <button
                 onClick={connectWallet}
                 disabled={connecting}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 py-3 rounded-xl font-medium disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-xl font-medium bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] hover:opacity-90 transition-all disabled:opacity-50 shadow-lg shadow-purple-500/20"
               >
-                {connecting ? 'Connecting...' : 'Connect'}
+                {connecting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    Connecting...
+                  </span>
+                ) : 'Connect'}
               </button>
               <button
                 onClick={() => setShowConnect(false)}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 py-3 rounded-xl"
+                className="flex-1 py-3.5 rounded-xl font-medium bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-colors"
               >
                 Cancel
               </button>
@@ -304,52 +325,91 @@ export default function Home() {
 
       {/* Create Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gray-800 border border-gray-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
-            <h2 className="text-xl font-bold mb-4">Post a Bounty</h2>
-            
-            <input
-              placeholder="Title (e.g., Design a logo)"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-gray-700/50 border border-gray-600 p-3 rounded-xl mb-3 focus:outline-none focus:border-green-500"
-            />
-            
-            <textarea
-              placeholder="Description - What do you need done?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-gray-700/50 border border-gray-600 p-3 rounded-xl mb-3 h-24 focus:outline-none focus:border-green-500"
-            />
-            
-            <textarea
-              placeholder="Requirements - AI will verify submissions against these criteria"
-              value={requirements}
-              onChange={(e) => setRequirements(e.target.value)}
-              className="w-full bg-gray-700/50 border border-gray-600 p-3 rounded-xl mb-3 h-24 focus:outline-none focus:border-green-500"
-            />
-            
-            <div className="relative mb-4">
-              <input
-                placeholder="10"
-                type="number"
-                value={reward}
-                onChange={(e) => setReward(e.target.value)}
-                className="w-full bg-gray-700/50 border border-gray-600 p-3 rounded-xl pr-20 focus:outline-none focus:border-green-500"
-              />
-              <span className="absolute right-3 top-3 text-gray-400 font-medium">USDC</span>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="glass rounded-3xl w-full max-w-lg shadow-2xl animate-fade-in overflow-hidden max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="p-6 pb-0">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-2xl mb-4 shadow-lg shadow-green-500/30">
+                🎯
+              </div>
+              <h2 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">Post a Bounty</h2>
+              <p className="text-[var(--text-secondary)] text-sm">
+                Create a task and let AI verify submissions automatically
+              </p>
             </div>
             
-            <div className="flex gap-3">
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
+                  Title
+                </label>
+                <input
+                  placeholder="e.g., Design a logo for my startup"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-green-500 transition-colors"
+                />
+              </div>
+              
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
+                  Description
+                </label>
+                <textarea
+                  placeholder="What do you need done? Be specific about the deliverables..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl h-24 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-green-500 transition-colors resize-none"
+                />
+              </div>
+              
+              {/* Requirements */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
+                  Requirements <span className="text-[var(--accent-purple)]">(AI Verification Criteria)</span>
+                </label>
+                <textarea
+                  placeholder="List specific requirements that AI will check against submissions..."
+                  value={requirements}
+                  onChange={(e) => setRequirements(e.target.value)}
+                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl h-24 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-green-500 transition-colors resize-none"
+                />
+              </div>
+              
+              {/* Reward */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-2">
+                  Reward Amount
+                </label>
+                <div className="relative">
+                  <input
+                    placeholder="10"
+                    type="number"
+                    value={reward}
+                    onChange={(e) => setReward(e.target.value)}
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] p-4 rounded-xl pr-20 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-green-500 transition-colors"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-medium bg-[var(--bg-card)] px-2 py-1 rounded-lg text-sm">
+                    USDC
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="p-6 pt-2 flex gap-3">
               <button
                 onClick={createBounty}
-                className="flex-1 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 py-3 rounded-xl font-medium"
+                className="flex-1 py-3.5 rounded-xl font-medium bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 transition-all shadow-lg shadow-green-500/20"
               >
-                Post Bounty
+                🚀 Post Bounty
               </button>
               <button
                 onClick={() => setShowCreate(false)}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 py-3 rounded-xl"
+                className="flex-1 py-3.5 rounded-xl font-medium bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-colors"
               >
                 Cancel
               </button>
