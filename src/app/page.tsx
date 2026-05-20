@@ -581,8 +581,50 @@ export default function Home() {
       </div>
       
       {/* Footer */}
-      <footer className="border-t border-gray-800 py-6 text-center text-gray-500 text-xs">
-        Built on Arc • Powered by Circle • AI Verified by GPT-4o
+      <footer className="border-t border-[var(--border-color)] mt-12">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Brand */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-sm">
+                🎯
+              </div>
+              <span className="font-medium text-[var(--text-primary)]">Bounty Hunter</span>
+            </div>
+            
+            {/* Tech Stack */}
+            <div className="flex items-center gap-6 text-sm text-[var(--text-muted)]">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[var(--accent-cyan)]"></div>
+                <span>Arc Network</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[var(--accent-purple)]"></div>
+                <span>Circle USDC</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                <span>AI Verified</span>
+              </div>
+            </div>
+            
+            {/* Links */}
+            <div className="flex items-center gap-4 text-sm">
+              <a href="https://faucet.circle.com" target="_blank" className="text-[var(--text-muted)] hover:text-[var(--accent-cyan)] transition-colors">
+                Get USDC
+              </a>
+              <span className="text-[var(--border-color)]">•</span>
+              <a href="https://arc.network" target="_blank" className="text-[var(--text-muted)] hover:text-[var(--accent-cyan)] transition-colors">
+                Arc Docs
+              </a>
+            </div>
+          </div>
+          
+          {/* Copyright */}
+          <div className="mt-6 pt-6 border-t border-[var(--border-color)] text-center text-xs text-[var(--text-muted)]">
+            Built for the Agora Hackathon 2026 • AI-powered bounty verification on Arc
+          </div>
+        </div>
       </footer>
     </main>
   );
