@@ -3,22 +3,40 @@
 import { useState, useEffect } from 'react';
 import { Bounty } from '@/lib/types';
 
+const CATEGORIES = ['All', 'Design', 'Writing', 'Development', 'Marketing', 'Research'];
+
+const AVATAR_COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#c77dff', '#f77f00'];
+
+function getAvatarColor(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 export default function Home() {
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('reward');
+
   const [showCreate, setShowCreate] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
+  const [showBounty, setShowBounty] = useState<Bounty | null>(null);
+
   const [userAddress, setUserAddress] = useState('');
   const [walletId, setWalletId] = useState('');
   const [addressInput, setAddressInput] = useState('');
   const [connecting, setConnecting] = useState(false);
-  
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [requirements, setRequirements] = useState('');
   const [reward, setReward] = useState('');
-  
-  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [category, setCategory] = useState('Development');
+
   const [submission, setSubmission] = useState('');
   const [verifying, setVerifying] = useState(false);
 
@@ -26,9 +44,9 @@ export default function Home() {
     fetchBounties();
     const saved = localStorage.getItem('bountyHunterWallet');
     if (saved) {
-      const { address, walletId } = JSON.parse(saved);
-      setUserAddress(address);
-      setWalletId(walletId);
+      const data = JSON.parse(saved);
+      setUserAddress(data.address);
+      setWalletId(data.walletId);
     }
   }, []);
 
@@ -37,8 +55,8 @@ export default function Home() {
       const res = await fetch('/api/bounties');
       const data = await res.json();
       setBounties(data.bounties || []);
-    } catch (error) {
-      console.error('Failed to fetch bounties:', error);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -46,7 +64,7 @@ export default function Home() {
 
   const connectWallet = async () => {
     if (!addressInput.trim() || !addressInput.startsWith('0x')) {
-      alert('Please enter a valid wallet address (0x...)');
+      alert('Enter a valid wallet address (0x...)');
       return;
     }
     setConnecting(true);
@@ -67,8 +85,8 @@ export default function Home() {
         setShowConnect(false);
         setAddressInput('');
       }
-    } catch (error) {
-      console.error('Wallet error:', error);
+    } catch (e) {
+      console.error(e);
     } finally {
       setConnecting(false);
     }
@@ -90,29 +108,33 @@ export default function Home() {
       const res = await fetch('/api/bounties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, requirements, reward, creator: userAddress, creatorWalletId: walletId }),
+        body: JSON.stringify({
+          title, description, requirements, reward, category,
+          creator: userAddress, creatorWalletId: walletId,
+        }),
       });
       if (res.ok) {
         setShowCreate(false);
         setTitle(''); setDescription(''); setRequirements(''); setReward('');
         fetchBounties();
       }
-    } catch (error) {
-      console.error('Create bounty error:', error);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   const claimBounty = async (bountyId: string) => {
     if (!userAddress) { setShowConnect(true); return; }
     try {
-      const res = await fetch(`/api/bounties/${bountyId}`, {
+      await fetch(`/api/bounties/${bountyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'claim', address: userAddress }),
       });
-      if (res.ok) fetchBounties();
-    } catch (error) {
-      console.error('Claim error:', error);
+      fetchBounties();
+      setShowBounty(null);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -129,228 +151,201 @@ export default function Home() {
       if (data.verification) {
         alert(data.verification.approved ? '✅ ' + data.message : '❌ ' + data.message);
       }
-      setSubmitting(null);
       setSubmission('');
       fetchBounties();
-    } catch (error) {
-      console.error('Submit error:', error);
+      setShowBounty(null);
+    } catch (e) {
+      console.error(e);
     } finally {
       setVerifying(false);
     }
   };
 
+  const filtered = bounties
+    .filter(b =>
+      (activeCategory === 'All' || b.category === activeCategory) &&
+      (b.title.toLowerCase().includes(search.toLowerCase()) ||
+        b.description?.toLowerCase().includes(search.toLowerCase()))
+    )
+    .sort((a, b) => {
+      if (sortBy === 'reward') return parseFloat(b.reward) - parseFloat(a.reward);
+      if (sortBy === 'newest') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      return 0;
+    });
+
+  const totalRewards = bounties.reduce((sum, b) => sum + parseFloat(b.reward || '0'), 0);
+
   return (
-    <main className="min-h-screen min-h-[100dvh] bg-white flex flex-col">
+    <main>
+      <div className="noise" />
+
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-[var(--border)]">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--blue)] flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v12M6 12h12"/>
-              </svg>
-            </div>
-            <span className="font-semibold text-base sm:text-lg">Bounty Hunter</span>
+      <header className="header">
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="logo-icon">◈</div>
+            <span style={{ fontSize: 18, fontWeight: 700 }}>Bounty<span style={{ fontWeight: 400 }}>Hub</span></span>
           </div>
-          
-          {userAddress ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-gray)] rounded-full">
-                <div className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse"></div>
-                <span className="text-sm font-mono text-[var(--text-secondary)]">
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {userAddress ? (
+              <>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                   {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
                 </span>
-              </div>
-              <button onClick={disconnect} className="text-sm text-[var(--text-muted)] hover:text-[var(--blue)] transition-all">
-                Disconnect
+                <button onClick={disconnect} className="btn-outline" style={{ padding: '8px 16px' }}>
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setShowConnect(true)} className="btn-primary">
+                Connect Wallet
               </button>
-            </div>
-          ) : (
-            <button 
-              onClick={() => setShowConnect(true)} 
-              className="flex items-center gap-2 bg-[var(--blue)] text-white font-medium text-sm px-5 py-2.5 rounded-full hover:bg-[var(--blue-hover)] transition-all shadow-sm hover:shadow-md"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="6" width="20" height="12" rx="2"/>
-                <path d="M16 12h.01"/>
-              </svg>
-              Connect Wallet
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-10">
-        {/* Hero */}
-        <div className="mb-6 sm:mb-8 animate-in">
-          <h1 className="mb-2">Bounty Board</h1>
-          <p>Complete tasks, get AI-verified, earn USDC.</p>
+      {/* Hero */}
+      <section className="hero">
+        <div className="hero-accent hero-accent-1" />
+        <div className="hero-accent hero-accent-2" />
+
+        <div className="hero-eyebrow">
+          💰 ${totalRewards.toLocaleString()} in active bounties
         </div>
 
-        {/* Post Button */}
-        {userAddress && (
-          <button 
-            onClick={() => setShowCreate(true)} 
-            className="btn-blue mb-6 sm:mb-8 animate-in stagger-1"
-            style={{ width: 'auto' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-            Post a Bounty
-          </button>
-        )}
+        <h1 className="hero-title">
+          Hunt Bounties.<br />
+          <span className="hero-highlight">Get Paid.</span>
+        </h1>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          {[
-            { value: bounties.filter(b => b.status === 'open').length, label: 'Open', delay: 'stagger-1' },
-            { value: bounties.filter(b => b.status === 'completed').length, label: 'Done', delay: 'stagger-2' },
-            { value: `$${bounties.reduce((sum, b) => sum + parseFloat(b.reward || '0'), 0)}`, label: 'USDC', delay: 'stagger-3' },
-          ].map((stat, i) => (
-            <div key={i} className={`card text-center animate-in ${stat.delay}`}>
-              <div className="text-2xl sm:text-3xl font-bold mb-0.5">{stat.value}</div>
-              <div className="text-xs sm:text-sm text-[var(--text-muted)]">{stat.label}</div>
-            </div>
+        <p className="hero-sub">
+          Complete tasks, get verified by AI, and receive instant USDC payments on Arc Network. No middlemen.
+        </p>
+
+        <div className="search-box">
+          <input
+            className="search-input"
+            placeholder="Search bounties, skills..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button className="search-btn">Search</button>
+        </div>
+
+        <div className="stats">
+          <div className="stat-item">
+            <span className="stat-val">${totalRewards.toLocaleString()}</span>
+            <span className="stat-label">Total Rewards</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-val">{bounties.length}</span>
+            <span className="stat-label">Active Bounties</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-val">{bounties.filter(b => b.status === 'completed').length}</span>
+            <span className="stat-label">Completed</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Filter Bar */}
+      <div className="filter-bar">
+        <div className="categories">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              className={`cat-btn ${activeCategory === cat ? 'active' : ''}`}
+              onClick={() => setActiveCategory(cat)}
+            >
+              {cat}
+            </button>
           ))}
         </div>
 
-        <div className="divider"></div>
-
-        {/* Bounty List */}
-        <h2 className="mb-4 sm:mb-6 animate-in">Available Bounties</h2>
-
-        {loading ? (
-          <div className="space-y-4">
-            {[1, 2].map(i => (
-              <div key={i} className="card">
-                <div className="skeleton h-5 w-2/3 mb-3"></div>
-                <div className="skeleton h-4 w-1/3 mb-4"></div>
-                <div className="skeleton h-16 w-full"></div>
-              </div>
-            ))}
-          </div>
-        ) : bounties.length === 0 ? (
-          <div className="card text-center py-10 sm:py-16 animate-in">
-            <div className="text-4xl sm:text-5xl mb-4">📋</div>
-            <h3 className="mb-2">No bounties yet</h3>
-            <p className="text-sm">Be the first to post one!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {bounties.map((bounty, i) => (
-              <div 
-                key={bounty.id} 
-                className="card card-interactive animate-in"
-                style={{ animationDelay: `${i * 0.08}s` }}
-              >
-                {/* Header */}
-                <div className="flex justify-between items-start gap-3 mb-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="truncate">{bounty.title}</h3>
-                      <span className={`badge ${bounty.status === 'open' ? 'badge-open' : bounty.status === 'completed' ? 'badge-completed' : 'badge-claimed'}`}>
-                        {bounty.status.charAt(0).toUpperCase() + bounty.status.slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[var(--text-muted)] font-mono">
-                      {bounty.creator.slice(0, 6)}...{bounty.creator.slice(-4)}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xl sm:text-2xl font-bold text-[var(--blue)]">${bounty.reward}</div>
-                    <div className="text-[10px] sm:text-xs text-[var(--text-muted)]">USDC</div>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <p className="mb-3 text-sm">{bounty.description}</p>
-
-                {/* Requirements */}
-                <div className="bg-[var(--bg-gray)] rounded-xl p-3 sm:p-4 mb-4">
-                  <div className="text-[10px] sm:text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide mb-1.5">
-                    Requirements (AI-verified)
-                  </div>
-                  <p className="text-xs sm:text-sm">{bounty.requirements}</p>
-                </div>
-
-                {/* Verification Result */}
-                {bounty.verificationResult && (
-                  <div className={`rounded-xl p-3 sm:p-4 mb-4 ${bounty.verificationResult.approved ? 'bg-[var(--green-bg)]' : 'bg-red-50'}`}>
-                    <div className={`text-sm font-medium flex items-center gap-1.5 ${bounty.verificationResult.approved ? 'text-[var(--green)]' : 'text-red-600'}`}>
-                      {bounty.verificationResult.approved ? (
-                        <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg> Approved</>
-                      ) : (
-                        <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg> Not Approved</>
-                      )}
-                    </div>
-                    <p className="text-xs sm:text-sm mt-1.5">{bounty.verificationResult.feedback}</p>
-                  </div>
-                )}
-
-                {/* Actions */}
-                {bounty.status === 'open' && bounty.creator !== userAddress && (
-                  <button onClick={() => claimBounty(bounty.id)} className="btn-blue btn-sm" style={{ width: 'auto' }}>
-                    ⚡ Claim Bounty
-                  </button>
-                )}
-
-                {bounty.status === 'claimed' && bounty.claimedBy === userAddress && (
-                  submitting === bounty.id ? (
-                    <div className="space-y-3 animate-in">
-                      <div>
-                        <label className="input-label">Your Submission</label>
-                        <textarea
-                          placeholder="Paste your work here..."
-                          value={submission}
-                          onChange={(e) => setSubmission(e.target.value)}
-                          className="input-field"
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => submitWork(bounty.id)} disabled={verifying} className="btn-blue btn-sm flex-1">
-                          {verifying ? (
-                            <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Verifying...</>
-                          ) : 'Submit'}
-                        </button>
-                        <button onClick={() => { setSubmitting(null); setSubmission(''); }} className="btn-outline btn-sm flex-1">
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setSubmitting(bounty.id)} className="btn-blue btn-sm" style={{ width: 'auto' }}>
-                      📝 Submit Work
-                    </button>
-                  )
-                )}
-
-                {bounty.status === 'completed' && (
-                  <div className="flex items-center gap-1.5 text-[var(--green)] font-medium text-sm">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M20 6L9 17l-5-5"/>
-                    </svg>
-                    Completed - Payment sent
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {userAddress && (
+            <button onClick={() => setShowCreate(true)} className="btn-primary" style={{ padding: '10px 18px' }}>
+              + Post Bounty
+            </button>
+          )}
+          <select
+            className="sort-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="reward">Highest Reward</option>
+            <option value="newest">Newest First</option>
+          </select>
+        </div>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-[var(--border)] bg-[var(--bg-gray)] safe-bottom">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-xs sm:text-sm text-[var(--text-muted)]">
-            <div>Built on Arc • Powered by Circle</div>
-            <div className="flex gap-4">
-              <a href="https://faucet.circle.com" target="_blank">Get USDC</a>
-              <a href="https://arc.network" target="_blank">Docs</a>
+      {/* Bounty Grid */}
+      {loading ? (
+        <div className="loading">
+          <div className="spinner" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="empty-state">
+          <div className="icon">🎯</div>
+          <h3>No bounties found</h3>
+          <p>Be the first to post one!</p>
+        </div>
+      ) : (
+        <div className="bounty-grid">
+          {filtered.map((bounty) => (
+            <div
+              key={bounty.id}
+              className="bounty-card"
+              onClick={() => setShowBounty(bounty)}
+            >
+              <div className="card-header">
+                <div className="poster">
+                  <div
+                    className="poster-avatar"
+                    style={{ background: getAvatarColor(bounty.creator) }}
+                  >
+                    {bounty.creator.slice(2, 4).toUpperCase()}
+                  </div>
+                  <span className="poster-name">
+                    {bounty.creator.slice(0, 6)}...{bounty.creator.slice(-4)}
+                  </span>
+                </div>
+                <span className={`status-badge status-${bounty.status}`}>
+                  {bounty.status}
+                </span>
+              </div>
+
+              <h3 className="card-title">{bounty.title}</h3>
+
+              <div className="tags">
+                {bounty.category && <span className="tag">{bounty.category}</span>}
+                <span className="tag">AI Verified</span>
+              </div>
+
+              <div className="card-footer">
+                <div className="reward">
+                  ${bounty.reward} <span>USDC</span>
+                </div>
+                <div className="meta">
+                  Arc Network
+                </div>
+              </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="footer">
+        <div className="footer-inner">
+          <div className="footer-links">
+            <a href="https://faucet.circle.com" target="_blank">Get Testnet USDC</a>
+            <a href="https://arc.network" target="_blank">Arc Docs</a>
+          </div>
+          <div className="footer-copy">
+            Built for Agora Hackathon 2026 • Powered by Circle
           </div>
         </div>
       </footer>
@@ -358,38 +353,34 @@ export default function Home() {
       {/* Connect Modal */}
       {showConnect && (
         <div className="modal-overlay" onClick={() => setShowConnect(false)}>
-          <div className="modal-content p-6 sm:p-8" onClick={e => e.stopPropagation()}>
-            {/* Handle bar for mobile */}
-            <div className="sm:hidden w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-6"></div>
-            
-            <h2 className="mb-2">Connect Wallet</h2>
-            <p className="mb-6 text-sm">Enter your Arc wallet address to get started.</p>
-            
-            <div className="mb-4">
-              <label className="input-label">Wallet Address</label>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <h2>Connect Wallet</h2>
+            <p>Enter your Arc wallet address to start hunting bounties.</p>
+
+            <div className="form-group">
+              <label className="form-label">Wallet Address</label>
               <input
                 type="text"
+                className="form-input"
                 placeholder="0x..."
                 value={addressInput}
                 onChange={(e) => setAddressInput(e.target.value)}
-                className="input-field font-mono"
-                autoFocus
+                style={{ fontFamily: 'monospace' }}
               />
             </div>
-            
-            <div className="bg-[var(--blue-light)] rounded-xl p-3 mb-6">
-              <p className="text-xs text-[var(--text-secondary)]">
-                💡 Get testnet USDC at <a href="https://faucet.circle.com" target="_blank" className="font-medium">faucet.circle.com</a>
+
+            <div style={{ background: 'rgba(99, 102, 241, 0.1)', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+              <p style={{ margin: 0, fontSize: 13 }}>
+                💡 Get testnet USDC at <a href="https://faucet.circle.com" target="_blank" style={{ color: 'var(--primary)' }}>faucet.circle.com</a>
               </p>
             </div>
-            
-            <div className="flex gap-3">
-              <button onClick={connectWallet} disabled={connecting} className="btn-blue flex-1">
-                {connecting ? (
-                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Connecting...</>
-                ) : 'Connect'}
+
+            <div className="modal-actions">
+              <button onClick={connectWallet} disabled={connecting} className="btn-primary">
+                {connecting ? 'Connecting...' : 'Connect'}
               </button>
-              <button onClick={() => setShowConnect(false)} className="btn-outline flex-1">
+              <button onClick={() => setShowConnect(false)} className="btn-outline">
                 Cancel
               </button>
             </div>
@@ -400,67 +391,178 @@ export default function Home() {
       {/* Create Modal */}
       {showCreate && (
         <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal-content p-6 sm:p-8" onClick={e => e.stopPropagation()}>
-            {/* Handle bar for mobile */}
-            <div className="sm:hidden w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-6"></div>
-            
-            <h2 className="mb-2">Post a Bounty</h2>
-            <p className="mb-6 text-sm">Create a task with AI verification.</p>
-            
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="input-label">Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Design a logo"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="input-field"
-                />
-              </div>
-              
-              <div>
-                <label className="input-label">Description</label>
-                <textarea
-                  placeholder="What do you need done?"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="input-field"
-                  rows={2}
-                />
-              </div>
-              
-              <div>
-                <label className="input-label">Requirements <span className="text-[var(--text-muted)] font-normal">(AI verifies these)</span></label>
-                <textarea
-                  placeholder="List specific requirements..."
-                  value={requirements}
-                  onChange={(e) => setRequirements(e.target.value)}
-                  className="input-field"
-                  rows={2}
-                />
-              </div>
-              
-              <div>
-                <label className="input-label">Reward (USDC)</label>
-                <input
-                  type="number"
-                  placeholder="10"
-                  value={reward}
-                  onChange={(e) => setReward(e.target.value)}
-                  className="input-field"
-                />
-              </div>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <h2>Post a Bounty</h2>
+            <p>Create a task with AI verification and USDC rewards.</p>
+
+            <div className="form-group">
+              <label className="form-label">Title</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g., Design a landing page"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
             </div>
-            
-            <div className="flex gap-3">
-              <button onClick={createBounty} className="btn-blue flex-1">
+
+            <div className="form-group">
+              <label className="form-label">Category</label>
+              <select
+                className="form-input"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {CATEGORIES.slice(1).map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Description</label>
+              <textarea
+                className="form-input"
+                placeholder="What do you need done?"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Requirements (AI verifies these)</label>
+              <textarea
+                className="form-input"
+                placeholder="List specific requirements..."
+                value={requirements}
+                onChange={(e) => setRequirements(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Reward (USDC)</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="50"
+                value={reward}
+                onChange={(e) => setReward(e.target.value)}
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button onClick={createBounty} className="btn-primary">
                 Post Bounty
               </button>
-              <button onClick={() => setShowCreate(false)} className="btn-outline flex-1">
+              <button onClick={() => setShowCreate(false)} className="btn-outline">
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bounty Detail Modal */}
+      {showBounty && (
+        <div className="modal-overlay" onClick={() => setShowBounty(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <span className={`status-badge status-${showBounty.status}`}>
+                {showBounty.status}
+              </span>
+              <div className="reward" style={{ fontSize: 28 }}>
+                ${showBounty.reward} <span>USDC</span>
+              </div>
+            </div>
+
+            <h2 style={{ marginBottom: 16 }}>{showBounty.title}</h2>
+
+            <div style={{ marginBottom: 16 }}>
+              <div className="form-label" style={{ marginBottom: 4 }}>Posted by</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  className="poster-avatar"
+                  style={{ background: getAvatarColor(showBounty.creator), width: 32, height: 32, fontSize: 12 }}
+                >
+                  {showBounty.creator.slice(2, 4).toUpperCase()}
+                </div>
+                <span style={{ fontFamily: 'monospace', fontSize: 14, color: 'var(--text-muted)' }}>
+                  {showBounty.creator}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div className="form-label" style={{ marginBottom: 4 }}>Description</div>
+              <p style={{ margin: 0 }}>{showBounty.description}</p>
+            </div>
+
+            <div style={{ background: 'var(--bg)', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+              <div className="form-label" style={{ marginBottom: 8, color: 'var(--accent)' }}>
+                📋 Requirements (AI-verified)
+              </div>
+              <p style={{ margin: 0, fontSize: 14 }}>{showBounty.requirements}</p>
+            </div>
+
+            {showBounty.verificationResult && (
+              <div style={{
+                background: showBounty.verificationResult.approved ? 'var(--green-bg)' : 'rgba(239, 68, 68, 0.15)',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 20
+              }}>
+                <div style={{
+                  fontWeight: 600,
+                  color: showBounty.verificationResult.approved ? 'var(--green)' : '#ef4444',
+                  marginBottom: 4
+                }}>
+                  {showBounty.verificationResult.approved ? '✓ Approved' : '✗ Not Approved'}
+                </div>
+                <p style={{ margin: 0, fontSize: 14 }}>{showBounty.verificationResult.feedback}</p>
+              </div>
+            )}
+
+            {showBounty.status === 'open' && showBounty.creator !== userAddress && (
+              <button onClick={() => claimBounty(showBounty.id)} className="btn-primary" style={{ width: '100%' }}>
+                ⚡ Claim This Bounty
+              </button>
+            )}
+
+            {showBounty.status === 'claimed' && showBounty.claimedBy === userAddress && (
+              <div>
+                <div className="form-group">
+                  <label className="form-label">Submit Your Work</label>
+                  <textarea
+                    className="form-input"
+                    placeholder="Paste your submission here..."
+                    value={submission}
+                    onChange={(e) => setSubmission(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <button
+                  onClick={() => submitWork(showBounty.id)}
+                  disabled={verifying}
+                  className="btn-primary"
+                  style={{ width: '100%' }}
+                >
+                  {verifying ? '🤖 AI Verifying...' : '🚀 Submit for Review'}
+                </button>
+              </div>
+            )}
+
+            {showBounty.status === 'completed' && (
+              <div style={{ textAlign: 'center', padding: 20, background: 'var(--green-bg)', borderRadius: 12 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
+                <div style={{ fontWeight: 600, color: 'var(--green)' }}>Bounty Completed!</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Payment has been sent</div>
+              </div>
+            )}
           </div>
         </div>
       )}

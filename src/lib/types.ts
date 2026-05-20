@@ -7,6 +7,7 @@ export interface Bounty {
   creator: string;
   creatorWalletId: string;
   status: 'open' | 'claimed' | 'submitted' | 'completed' | 'refunded';
+  category?: string;
   claimedBy?: string;
   claimedAt?: string;
   submission?: string;
