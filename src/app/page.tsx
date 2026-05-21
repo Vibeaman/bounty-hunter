@@ -5,14 +5,16 @@ import { Bounty } from '@/lib/types';
 
 const CATEGORIES = ['All', 'Design', 'Writing', 'Development', 'Marketing', 'Research'];
 
-const AVATAR_COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#c77dff', '#f77f00'];
+const CATEGORY_ICONS: Record<string, { emoji: string; bg: string }> = {
+  'Design': { emoji: '🎨', bg: '#8b5cf6' },
+  'Writing': { emoji: '✍️', bg: '#3b82f6' },
+  'Development': { emoji: '💻', bg: '#10b981' },
+  'Marketing': { emoji: '📢', bg: '#f59e0b' },
+  'Research': { emoji: '🔍', bg: '#ec4899' },
+};
 
-function getAvatarColor(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+function getCategoryIcon(category?: string) {
+  return CATEGORY_ICONS[category || 'Development'] || { emoji: '📋', bg: '#6366f1' };
 }
 
 export default function Home() {
@@ -304,9 +306,9 @@ export default function Home() {
                 <div className="poster">
                   <div
                     className="poster-avatar"
-                    style={{ background: getAvatarColor(bounty.creator) }}
+                    style={{ background: getCategoryIcon(bounty.category).bg }}
                   >
-                    {bounty.creator.slice(2, 4).toUpperCase()}
+                    {getCategoryIcon(bounty.category).emoji}
                   </div>
                   <span className="poster-name">
                     {bounty.creator.slice(0, 6)}...{bounty.creator.slice(-4)}
@@ -487,9 +489,9 @@ export default function Home() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div
                   className="poster-avatar"
-                  style={{ background: getAvatarColor(showBounty.creator), width: 32, height: 32, fontSize: 12 }}
+                  style={{ background: getCategoryIcon(showBounty.category).bg, width: 32, height: 32, fontSize: 16 }}
                 >
-                  {showBounty.creator.slice(2, 4).toUpperCase()}
+                  {getCategoryIcon(showBounty.category).emoji}
                 </div>
                 <span style={{ fontFamily: 'monospace', fontSize: 14, color: 'var(--text-muted)' }}>
                   {showBounty.creator}
