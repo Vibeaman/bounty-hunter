@@ -82,46 +82,55 @@ const SAMPLE_BOUNTIES: Bounty[] = [
   },
 ];
 
-// In-memory storage that persists during warm instances
-const bounties: Map<string, Bounty> = new Map();
+// Runtime storage for new bounties (will reset on cold start, but samples always there)
+const runtimeBounties: Map<string, Bounty> = new Map();
 const users: Map<string, User> = new Map();
-
-// Initialize with sample bounties immediately
-SAMPLE_BOUNTIES.forEach(b => bounties.set(b.id, b));
-
-// Ensure samples exist
-function initSamples() {
-  if (bounties.size === 0) {
-    SAMPLE_BOUNTIES.forEach(b => bounties.set(b.id, b));
-  }
-}
 
 // Bounty operations
 export async function createBounty(bounty: Bounty): Promise<Bounty> {
-  initSamples();
-  bounties.set(bounty.id, bounty);
+  runtimeBounties.set(bounty.id, bounty);
   return bounty;
 }
 
 export async function getBounty(id: string): Promise<Bounty | undefined> {
-  initSamples();
-  return bounties.get(id);
+  // Check runtime first, then samples
+  if (runtimeBounties.has(id)) {
+    return runtimeBounties.get(id);
+  }
+  return SAMPLE_BOUNTIES.find(b => b.id === id);
 }
 
 export async function getAllBounties(): Promise<Bounty[]> {
-  initSamples();
-  return Array.from(bounties.values()).sort(
+  // Combine samples with runtime bounties
+  const allBounties = [...SAMPLE_BOUNTIES];
+  
+  // Add runtime bounties (overwrite samples if same id)
+  runtimeBounties.forEach((bounty, id) => {
+    const existingIndex = allBounties.findIndex(b => b.id === id);
+    if (existingIndex >= 0) {
+      allBounties[existingIndex] = bounty;
+    } else {
+      allBounties.push(bounty);
+    }
+  });
+  
+  return allBounties.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
 
 export async function updateBounty(id: string, updates: Partial<Bounty>): Promise<Bounty | undefined> {
-  initSamples();
-  const bounty = bounties.get(id);
+  let bounty = runtimeBounties.get(id);
+  
+  // If not in runtime, check samples
+  if (!bounty) {
+    bounty = SAMPLE_BOUNTIES.find(b => b.id === id);
+  }
+  
   if (!bounty) return undefined;
   
   const updated = { ...bounty, ...updates };
-  bounties.set(id, updated);
+  runtimeBounties.set(id, updated); // Store updated version in runtime
   return updated;
 }
 
