@@ -86,7 +86,10 @@ const SAMPLE_BOUNTIES: Bounty[] = [
 const bounties: Map<string, Bounty> = new Map();
 const users: Map<string, User> = new Map();
 
-// Initialize with sample bounties
+// Initialize with sample bounties immediately
+SAMPLE_BOUNTIES.forEach(b => bounties.set(b.id, b));
+
+// Ensure samples exist
 function initSamples() {
   if (bounties.size === 0) {
     SAMPLE_BOUNTIES.forEach(b => bounties.set(b.id, b));
