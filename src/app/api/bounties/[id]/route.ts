@@ -1,148 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBounty, updateBounty } from '@/lib/store';
 import { verifySubmission } from '@/lib/ai';
-import { transferUSDC } from '@/lib/circle';
 
+// Get single bounty
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const bounty = getBounty(id);
-  
-  if (!bounty) {
-    return NextResponse.json({ error: 'Bounty not found' }, { status: 404 });
+  try {
+    const { id } = await params;
+    const bounty = await getBounty(id);
+    
+    if (!bounty) {
+      return NextResponse.json({ error: 'Bounty not found' }, { status: 404 });
+    }
+    
+    return NextResponse.json({ bounty });
+  } catch (error) {
+    console.error('Get bounty error:', error);
+    return NextResponse.json({ error: 'Failed to fetch bounty' }, { status: 500 });
   }
-  
-  return NextResponse.json({ bounty });
 }
 
-// Claim, submit, or other actions
+// Update bounty (claim, submit, etc.)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const bounty = getBounty(id);
-  
-  if (!bounty) {
-    return NextResponse.json({ error: 'Bounty not found' }, { status: 404 });
-  }
-  
   try {
+    const { id } = await params;
     const body = await req.json();
-    const { action, address, walletId, submission } = body;
+    const { action, address, submission } = body;
     
-    switch (action) {
-      case 'claim': {
-        if (bounty.status !== 'open') {
-          return NextResponse.json({ error: 'Bounty is not open' }, { status: 400 });
-        }
-        
-        const updated = updateBounty(id, {
-          status: 'claimed',
-          claimedBy: address,
-          claimedAt: new Date().toISOString(),
-        });
-        
-        return NextResponse.json({ bounty: updated });
+    const bounty = await getBounty(id);
+    if (!bounty) {
+      return NextResponse.json({ error: 'Bounty not found' }, { status: 404 });
+    }
+    
+    // Claim bounty
+    if (action === 'claim') {
+      if (bounty.status !== 'open') {
+        return NextResponse.json({ error: 'Bounty not available' }, { status: 400 });
+      }
+      if (bounty.creator.toLowerCase() === address.toLowerCase()) {
+        return NextResponse.json({ error: 'Cannot claim your own bounty' }, { status: 400 });
       }
       
-      case 'submit': {
-        if (bounty.status !== 'claimed') {
-          return NextResponse.json({ error: 'Bounty is not claimed' }, { status: 400 });
-        }
-        
-        if (bounty.claimedBy !== address) {
-          return NextResponse.json({ error: 'You did not claim this bounty' }, { status: 403 });
-        }
-        
-        // Update to submitted
-        updateBounty(id, {
-          status: 'submitted',
+      const updated = await updateBounty(id, {
+        status: 'claimed',
+        claimedBy: address.toLowerCase(),
+        claimedAt: new Date().toISOString(),
+      });
+      
+      return NextResponse.json({ bounty: updated, message: 'Bounty claimed!' });
+    }
+    
+    // Submit work
+    if (action === 'submit') {
+      if (bounty.status !== 'claimed') {
+        return NextResponse.json({ error: 'Bounty not in claimed state' }, { status: 400 });
+      }
+      if (bounty.claimedBy?.toLowerCase() !== address.toLowerCase()) {
+        return NextResponse.json({ error: 'Not your bounty to submit' }, { status: 400 });
+      }
+      
+      // Verify with AI
+      const verification = await verifySubmission(
+        bounty.requirements,
+        submission
+      );
+      
+      if (verification.approved) {
+        // Mark as completed - payout would happen here in production
+        const updated = await updateBounty(id, {
+          status: 'completed',
           submission,
           submittedAt: new Date().toISOString(),
+          verificationResult: verification,
+          completedAt: new Date().toISOString(),
         });
         
-        // AI verification
-        const result = await verifySubmission(
-          bounty.title,
-          bounty.description,
-          bounty.requirements,
-          submission
-        );
-        
-        if (result.approved) {
-          // Transfer USDC to worker
-          try {
-            await transferUSDC(
-              bounty.creatorWalletId,
-              address, // worker's address
-              bounty.reward
-            );
-            
-            const completed = updateBounty(id, {
-              status: 'completed',
-              verificationResult: {
-                approved: true,
-                reason: result.reason,
-                feedback: result.feedback,
-              },
-              completedAt: new Date().toISOString(),
-            });
-            
-            return NextResponse.json({ 
-              bounty: completed, 
-              verification: result,
-              message: 'Work approved! Payment sent.' 
-            });
-          } catch (transferError) {
-            console.error('Transfer error:', transferError);
-            return NextResponse.json({ 
-              error: 'Work approved but payment failed',
-              verification: result 
-            }, { status: 500 });
-          }
-        } else {
-          // Rejected - back to claimed so they can try again
-          const rejected = updateBounty(id, {
-            status: 'claimed',
-            verificationResult: {
-              approved: false,
-              reason: result.reason,
-              feedback: result.feedback,
-            },
-          });
-          
-          return NextResponse.json({ 
-            bounty: rejected, 
-            verification: result,
-            message: 'Work not approved. Please review feedback and try again.' 
-          });
-        }
-      }
-      
-      case 'cancel': {
-        if (bounty.creator !== address) {
-          return NextResponse.json({ error: 'Only creator can cancel' }, { status: 403 });
-        }
-        
-        if (bounty.status !== 'open') {
-          return NextResponse.json({ error: 'Can only cancel open bounties' }, { status: 400 });
-        }
-        
-        const cancelled = updateBounty(id, {
-          status: 'refunded',
+        return NextResponse.json({
+          bounty: updated,
+          verification,
+          message: `Approved! $${bounty.reward} USDC will be sent to your wallet.`,
+        });
+      } else {
+        // Rejected - back to claimed state
+        const updated = await updateBounty(id, {
+          submission,
+          submittedAt: new Date().toISOString(),
+          verificationResult: verification,
         });
         
-        return NextResponse.json({ bounty: cancelled });
+        return NextResponse.json({
+          bounty: updated,
+          verification,
+          message: `Not approved: ${verification.feedback}`,
+        });
       }
-      
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
+    
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
-    console.error('Bounty action error:', error);
-    return NextResponse.json({ error: 'Action failed' }, { status: 500 });
+    console.error('Update bounty error:', error);
+    return NextResponse.json({ error: 'Failed to update bounty' }, { status: 500 });
   }
 }

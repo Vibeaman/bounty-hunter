@@ -12,16 +12,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Valid address required' }, { status: 400 });
     }
     
+    const normalizedAddress = address.toLowerCase();
+    
     // Check if user already exists
-    let user = getUser(address);
+    let user = await getUser(normalizedAddress);
     
     if (!user) {
       // Just store their external wallet address
-      // No Circle wallet needed - we pay directly to their address
-      user = createUser({
+      user = await createUser({
         id: uuid(),
-        address: address.toLowerCase(),
-        walletId: address.toLowerCase(), // Use their address as walletId for simplicity
+        address: normalizedAddress,
+        walletId: normalizedAddress,
         createdAt: new Date().toISOString(),
       });
     }
