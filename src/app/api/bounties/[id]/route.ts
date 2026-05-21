@@ -66,6 +66,8 @@ export async function PATCH(
       
       // Verify with AI
       const verification = await verifySubmission(
+        bounty.title,
+        bounty.description,
         bounty.requirements,
         submission
       );
